@@ -1,0 +1,5 @@
+Selamat , kita sudah berhasil menginstall menggunakan Helm Chart
+
+untuk mengakses network silahkan gunakan url berikut
+
+{{ .Release.Name }}.{{ .Release.Namespace }}:{{ .Values.service.port }} 

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }} # akan di generate saat ngasih nama di Helm Install
+  labels: 
+    {{- include "helm-chart-app.labels" . | nindent 4}}
+spec:
+  selector:
+    matchLabels:
+      app: {{ quote .Release.Name}}
+  template:
+    metadata:
+      labels:
+        app: {{ quote .Release.Name}}
+    spec:
+      containers:
+        - name: {{.Release.Name}}
+          image: {{ print .Values.image.repository ":" .Values.image.tag | lower | quote }}
+          {{- with .Values.resources}} #Jika Kosong maka tidak akan di generate
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }} # "-", digunakan untuk menghapus space/whitespace
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          {{- with .Values.env }}
+          env: 
+            {{- range $key , $value := .}} # untuk membedakan key dan values
+            - name: {{ $key | upper }} 
+              value: {{ $value }}
+            - name: APP_NAME
+              value: {{ $.Release.Name}}
+            {{- end }}
+          {{- end }}
+
+          volumeMounts: 
+            - name: config-file # ini akan menerima dari init container
+              mountPath: /config
+
+          ports:
+          - containerPort: {{ .Values.service.port }}
+
+          initContainers:
+          - name: init-preparation
+            image: busybox:1.36
+            command: ['/script/init-command.sh']
+            valueMounts: 
+              - name: init-command
+                mountPath: /script
+              - name: config-file # ini akan di lempar ke main container
+                mountPath: /config
+
+          volumes:
+            - name: init-command
+              configMap: 
+                name: {{ .Release.Name }}-configmap
+                defaultMode: 500
+            - name: config-file
+              emptyDir: {}
+          
